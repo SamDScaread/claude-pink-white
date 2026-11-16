@@ -1,12 +1,14 @@
 {
   "name": "claude-pink-white",
-  "owner": { "name": "SamDScaread" },
+  "owner": {
+    "name": "SamDScaread"
+  },
   "description": "A soft pink look for the Claude desktop app.",
   "plugins": [
     {
       "name": "pink-white",
       "source": "./",
-      "description": "A slowly drifting pink wash behind the Claude desktop window, with frosted white panels."
+      "description": "A pink pixel-art look for the Claude desktop app: a pink sky, a sakura branch with falling petals, and pink frosted panels."
     }
   ]
 }

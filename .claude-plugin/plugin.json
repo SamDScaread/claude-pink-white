@@ -1,7 +1,7 @@
 {
   "name": "pink-white",
-  "version": "0.2.0",
-  "description": "A soft pink look for the Claude desktop app: a slowly drifting pink wash behind the window and frosted white panels.",
+  "version": "0.3.0",
+  "description": "A pink pixel-art look for the Claude desktop app: a pink sky, a sakura branch with falling petals, and pink frosted panels.",
   "author": { "name": "SamDScaread" },
   "license": "MIT",
   "homepage": "https://github.com/SamDScaread/claude-pink-white",
