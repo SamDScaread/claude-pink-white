@@ -1,13 +1,13 @@
 # pink-white: a pink pixel-art look for the Claude desktop app
 
-像素风的粉色主题：窗口背后是一片像素粉色天空，云朵慢慢飘、星点闪烁；右上角空白处有一枝像素樱花，白色花瓣不断飘落；侧栏、顶栏和输入框变成粉色毛玻璃。
+像素风的粉色主题：窗口背后是一片像素粉色天空，云朵慢慢飘、星点闪烁；右上角空白处有一枝像素樱花，白色花瓣随风往左飘落；侧栏、顶栏和输入框变成粉色毛玻璃。
 
-A Claude Code mod that turns the Claude desktop app pink: a pixel-art pink sky behind the window with drifting clouds and twinkles, a sakura branch in the top-right corner with white petals falling from it, and pink frosted glass on the sidebar, the top bar and the prompt box.
+A Claude Code mod that turns the Claude desktop app pink: a pixel-art pink sky behind the window with drifting clouds and twinkles, a sakura branch in the top-right corner with white petals drifting down and to the left on a breeze, and pink frosted glass on the sidebar, the top bar and the prompt box.
 
 - The app freezes the whole scene when your system asks for reduced motion, when it draws without GPU compositing (hardware acceleration off, GPU compositing unavailable, or the Microsoft Basic Render Driver; these machines also get the 70% veil described below), or when its own background-animation setting is off. The mod cannot change that; `/pink-white test motion` shows which of these applies. While still, the petals rest scattered below the branch and the clouds stay in view.
 - The scene sits behind the app, so it never takes a click. At most window sizes the tips of the branch reach behind the edge of the conversation column.
 - `/pink-white off` goes back to the default look (and stays off in new sessions); `/pink-white on` brings it back; `/pink-white status` says whether the theme is on and whether the app has drawn the background.
-- The branch hangs in the top-right corner of the content area, where a right-hand panel can cover it. `/pink-white corner left` moves it beside the sidebar instead; `/pink-white corner right` moves it back.
+- The branch hangs in the top-right corner of the content area, where a right-hand panel can cover it; the petals still drift out across the conversation. `/pink-white corner left` moves the branch beside the sidebar instead, with the petals drifting toward the middle; `/pink-white corner right` moves it back.
 - `/pink-white glass on|off|veil` picks the glass. `on` (the default) puts pink glass over the scene. `off` drops the glass and shows the scene in full, with the app's own sidebar and prompt box. Some machines get a 70% veil over the conversation whenever glass is on, which washes the sky out; there, `veil` keeps the pink glass and draws a deeper sky that reads close to the normal one through that veil, though over the conversation the clouds and twinkles fade, the blossom centers are muted and the branch reads as pale mauve. `/pink-white test` and `/pink-white test glass` show four loud numbered blocks to check what the app shows. `/pink-white test motion` shows four labelled rows instead: whether the app lets the background move, and whether the system asks for reduced motion, reduced transparency or high contrast, as the scene sees it.
 - Choices made with `corner`, `glass` and `off` are saved for every session; made while the theme is off, they apply when you run `/pink-white on`.
 
