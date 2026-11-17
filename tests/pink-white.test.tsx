@@ -172,6 +172,49 @@ test('test shows the loud pattern with no glass, and on goes back to the look', 
   expect(sets[2]?.backdrop).toEqual({ scene: SCENE, glass: GLASS })
 })
 
+test('test motion shows the motion probe with no glass, and on goes back to the look', async ($, on) => {
+  engine(on)
+  const sets = recordSets(on)
+
+  await $.session.start(START)
+  const said = await $.command.run({ ...TYPED, command: 'pink-white', args: 'Test  Motion' })
+  expect(said.text ?? '').toMatch(/Row 1 reads RUNNING/)
+  expect(sets[1]).toEqual({ backdrop: { scene: 'pink-white-test-motion', glass: false } })
+
+  const ui = await $.ui.mount({
+    ...BACKDROP,
+    props: { scene: 'pink-white-test-motion', plugin: 'pink-white', glass: false },
+    surface: 'desktop',
+  })
+  const source = String((await ui.find({ type: 'Svg' }))?.props.source)
+  // The app's freeze goes in right after a root <svg> tag that comes first and is not self-closing.
+  expect(source.startsWith('<svg ')).toBe(true)
+  expect(source.length).toBeLessThan(131072)
+  for (const part of [
+    'RUNNING',
+    'STOPPED',
+    'UNKNOWN',
+    'STYLE REMOVED',
+    'animation:pw-on',
+    'prefers-reduced-motion: no-preference',
+    'prefers-reduced-motion: reduce',
+    'prefers-reduced-transparency: reduce',
+    'forced-colors: active',
+    'prefers-contrast: more',
+  ]) {
+    expect(source).toContain(part)
+  }
+  // No freeze of its own, so row 1 reports the app alone; nothing the app's scrub would drop.
+  expect(source).not.toContain('!important')
+  expect(source).not.toMatch(/<(script|use|image|foreignObject|animate|set)\b/)
+  const style = source.slice(source.indexOf('<style>') + 7, source.indexOf('</style>'))
+  expect(style).not.toMatch(/[<>&]/)
+  await ui.unmount()
+
+  await $.command.run({ ...TYPED, command: 'pink-white', args: 'on' })
+  expect(sets[2]?.backdrop).toEqual({ scene: SCENE, glass: GLASS })
+})
+
 test('glass off drops the glass and stays off; test glass shows the pattern through it', async ($, on) => {
   engine(on)
   const sets = recordSets(on)

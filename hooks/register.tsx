@@ -12,8 +12,9 @@ import { SCENE, SCENE_LEFT, SCENE_LEFT_VEIL, SCENE_VEIL } from './scene.js'
 
 // The scene (hooks/scene.js, built by dev/make-scene.mjs): a pixel-art pink sky with drifting
 // clouds and twinkles, a sakura branch in a top corner and white petals falling from it. The
-// app freezes it by itself under the system's reduced-motion setting and its own
-// background-animation setting; frozen, a few petals and clouds still rest in view.
+// app freezes every backdrop by itself, by writing *{animation:none!important} into the scene,
+// when it draws without GPU compositing, when the system asks for reduced motion, or when its
+// own background-animation setting is off; frozen, the petals and clouds rest in view.
 // The branch sits in the top-right corner of the content area, where a right-hand panel can
 // cover it; '/pink-white corner left' mirrors it beside the sidebar.
 // Each corner comes in two palettes: 'normal', and 'veil', worked backwards so that seen
@@ -44,6 +45,96 @@ const TEST = {
     '<text x="100" y="72">1</text><text x="300" y="72">2</text><text x="100" y="172">3</text><text x="300" y="172">4</text></g></svg>',
 }
 
+// '/pink-white test motion': why the scene stands still, read off the window with no screenshot.
+// Row 1 says RUNNING only while CSS animations run in the scene: the app's freeze removes them,
+// so it turns to STOPPED, the seconds stop counting and the small square halts. Rows 2 to 4 show
+// the settings the scene sees; each state appears only on a positive media match, so a setting
+// the app does not report reads UNKNOWN. Green is the usual state, red the one that freezes the
+// scene or makes the glass opaque, grey unknown, and the words carry every state. The rows sit
+// right of the sidebar, left of a right-hand panel and above the prompt box. The test has no
+// reduced-motion rule of its own, so row 1 reports the app alone. Should the app ever drop the
+// stylesheet, a grey cover says so, where every row would otherwise turn red.
+const PROBE = { green: '#007E33', red: '#C62828', grey: '#546E7A', page: '#263238' }
+const ROW_TOP = [8, 24, 40, 56] as const // percent of the window height; each row is 15% tall
+const PROBE_X = '40%'
+
+function probeLine(size: 'h' | 'w' | 'd', y: number, text: string): string {
+  return `<text class="t ${size}" x="${PROBE_X}" y="${y}%">${text}</text>`
+}
+
+function probeState(cls: string, row: 0 | 1 | 2, fill: string, title: string, word: string, detail: string): string {
+  const y = ROW_TOP[row]
+  return (
+    `<g class="${cls}"><rect x="0" y="${y}%" width="100%" height="15%" fill="${fill}"/>` +
+    probeLine('h', y + 4, title) +
+    probeLine('w', y + 9.5, word) +
+    probeLine('d', y + 13.2, detail) +
+    '</g>'
+  )
+}
+
+const PROBE_CSS = [
+  '.t{font-family:"Segoe UI",Arial,sans-serif;font-weight:700;fill:#FFFFFF;text-anchor:middle}',
+  '.h{font-size:2.4vmin}.w{font-size:4.6vmin}.d{font-size:2.2vmin}',
+  '.nocss{display:none}.s{display:none}.unk{display:inline}',
+  '@keyframes pw-on{from,to{opacity:1}}@keyframes pw-off{from,to{opacity:0}}',
+  '@keyframes pw-tick{0%{opacity:1}10%{opacity:0}100%{opacity:0}}',
+  '@keyframes pw-sweep{from{transform:translateX(0)}to{transform:translateX(30vw)}}',
+  '.run{opacity:0;animation:pw-on 1s linear infinite}.stop{animation:pw-off 1s linear infinite}',
+  '.n{opacity:0;animation:pw-tick 10s step-end infinite}',
+  Array.from({ length: 9 }, (_, i) => `.n${i + 1}{animation-delay:-${9 - i}s}`).join(''),
+  '.sweep{animation:pw-sweep 3s linear infinite alternate}',
+  '@media (prefers-reduced-motion: no-preference){.rm .unk{display:none}.rm .no{display:inline}}',
+  '@media (prefers-reduced-motion: reduce){.rm .unk{display:none}.rm .yes{display:inline}}',
+  '@media (prefers-reduced-transparency: no-preference){.rt .unk{display:none}.rt .no{display:inline}}',
+  '@media (prefers-reduced-transparency: reduce){.rt .unk{display:none}.rt .yes{display:inline}}',
+  '@media (forced-colors: none){.fc .unk{display:none}.fc .no{display:inline}}',
+  '@media (forced-colors: active){.fc .unk{display:none}.fc .yes{display:inline}}',
+  '@media (prefers-contrast: no-preference){.pc .unk{display:none}.pc .no{display:inline}}',
+  '@media (prefers-contrast: more){.pc .unk{display:none}.pc .more{display:inline}}',
+  '@media (prefers-contrast: less){.pc .unk{display:none}.pc .less{display:inline}}',
+  '@media (prefers-contrast: custom){.pc .unk{display:none}.pc .custom{display:inline}}',
+  // The same list the app uses to make the glass opaque.
+  '.b4bad{display:none}@media (forced-colors: active),(prefers-contrast: more){.b4ok{display:none}.b4bad{display:inline}}',
+].join('')
+
+const ROW4 = ROW_TOP[3]
+const MOTION_TEST = {
+  name: 'pink-white-test-motion',
+  svg:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">' +
+    `<style>${PROBE_CSS}</style>` +
+    `<rect width="100%" height="100%" fill="${PROBE.page}"/>` +
+    probeLine('d', 76, 'pink-white motion test: read each row number, its big word and the line under it') +
+    probeState('run', 0, PROBE.green, '1  BACKGROUND ANIMATION', 'RUNNING', 'seconds:') +
+    probeState('stop', 0, PROBE.red, '1  BACKGROUND ANIMATION', 'STOPPED', 'stopped by the app') +
+    `<g class="run">${Array.from({ length: 10 }, (_, k) => `<text class="t d n n${k}" x="47%" y="${ROW_TOP[0] + 13.2}%">${k}</text>`).join('')}</g>` +
+    `<rect class="sweep" x="22%" y="${ROW_TOP[0] + 11}%" width="1.6%" height="2.4%" fill="#FFFFFF"/>` +
+    `<g class="rm">${probeState('s unk', 1, PROBE.grey, '2  REDUCED MOTION', 'UNKNOWN', 'the app does not report it')}` +
+    probeState('s no', 1, PROBE.green, '2  REDUCED MOTION', 'NO', 'the system allows full motion') +
+    `${probeState('s yes', 1, PROBE.red, '2  REDUCED MOTION', 'YES', 'Windows: Animation effects off. Mac: Reduce motion on')}</g>` +
+    `<g class="rt">${probeState('s unk', 2, PROBE.grey, '3  REDUCED TRANSPARENCY', 'UNKNOWN', 'the app does not report it')}` +
+    probeState('s no', 2, PROBE.green, '3  REDUCED TRANSPARENCY', 'NO', 'the system allows transparency') +
+    `${probeState('s yes', 2, PROBE.red, '3  REDUCED TRANSPARENCY', 'YES', 'Windows: Transparency effects off. Mac: Reduce transparency on')}</g>` +
+    `<g class="b4"><rect class="b4ok" x="0" y="${ROW4}%" width="100%" height="15%" fill="${PROBE.green}"/>` +
+    `<rect class="b4bad" x="0" y="${ROW4}%" width="100%" height="15%" fill="${PROBE.red}"/></g>` +
+    probeLine('h', ROW4 + 4, '4  HIGH CONTRAST') +
+    `<g class="fc"><g class="s unk">${probeLine('w', ROW4 + 9.5, 'FORCED COLORS ?')}</g>` +
+    `<g class="s no">${probeLine('w', ROW4 + 9.5, 'FORCED COLORS OFF')}</g>` +
+    `<g class="s yes">${probeLine('w', ROW4 + 9.5, 'FORCED COLORS ON')}</g></g>` +
+    `<g class="pc"><g class="s unk">${probeLine('d', ROW4 + 13.2, 'contrast: unknown')}</g>` +
+    `<g class="s no">${probeLine('d', ROW4 + 13.2, 'contrast: standard')}</g>` +
+    `<g class="s more">${probeLine('d', ROW4 + 13.2, 'contrast: MORE')}</g>` +
+    `<g class="s less">${probeLine('d', ROW4 + 13.2, 'contrast: less')}</g>` +
+    `<g class="s custom">${probeLine('d', ROW4 + 13.2, 'contrast: custom')}</g></g>` +
+    // Shown only without the stylesheet, so it carries its own presentation attributes.
+    `<g class="nocss"><rect width="100%" height="100%" fill="${PROBE.grey}"/>` +
+    '<svg width="100%" height="100%" viewBox="0 0 800 450"><g font-family="Segoe UI, Arial, sans-serif" font-weight="700" fill="#FFFFFF" text-anchor="middle">' +
+    '<text x="400" y="210" font-size="64">STYLE REMOVED</text>' +
+    '<text x="400" y="270" font-size="30">the app stripped the styles from this test</text></g></svg></g>' +
+    '</svg>',
+}
+
 // The palette, light only: pages #FFF7FA, cards and panels #FFFFFF, text #4A2E3A, secondary
 // text #8A5A70, links #B83A6E, focus line #D46A92 on a #FFE3EC glow, accent borders #F8D7E3,
 // diff signs and counts #27704A / #B42318.
@@ -72,7 +163,8 @@ const { theme, problems } = makeColors({
 // Pink glass: the sidebar (56%) and the top bar (46%) take this tint over the scene, the prompt
 // box takes it whole and the person's message bubbles mix it with white. No blur. opacity is
 // the veil over the conversation: 0 asks for none, but on some machines the app lays a 70% veil
-// there anyway (without GPU compositing, or on an unfocused split pane), washing the scene out.
+// there anyway (without GPU compositing, or on an unfocused split pane), washing the scene out,
+// and where the system asks for reduced transparency or high contrast it makes the glass opaque.
 // Three ways to run it, '/pink-white glass on|off|veil':
 //   on   - pink glass over the normal scene (where the app adds no veil);
 //   off  - no glass: the normal scene in full, the app's own sidebar and prompt box;
@@ -145,8 +237,8 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'pink-white',
-      description: 'Pink-white theme: on, off, status, corner left|right, glass on|off|veil, test, test glass',
-      argumentHint: 'on | off | status | corner left|right | glass on|off|veil | test | test glass',
+      description: 'Pink-white theme: on, off, status, corner left|right, glass on|off|veil, test, test glass, test motion',
+      argumentHint: 'on | off | status | corner left|right | glass on|off|veil | test | test glass | test motion',
     })
     await $.tool.register({
       name: 'status',
@@ -197,6 +289,21 @@ export const register: Register = on => {
       }
     }
 
+    if (arg === 'test motion') {
+      testing = true
+      lastSet = await $.theme.set({ backdrop: { scene: MOTION_TEST.name, glass: false } })
+      return {
+        text:
+          'Motion test on, with no pink glass: four rows on a dark page, right of the sidebar. ' +
+          'Row 1 reads RUNNING (green; the seconds count and the small square slides) when the app lets the scene move, STOPPED (red) when it froze it. ' +
+          'Rows 2 to 4 show what the system asks for: NO or OFF in green, YES or ON in red, UNKNOWN in grey where the app does not report it. ' +
+          'STOPPED with REDUCED MOTION YES: the reduced-motion setting froze it. ' +
+          'STOPPED with NO: the app is drawing without GPU compositing (hardware acceleration off, GPU compositing unavailable, or the Microsoft Basic Render Driver) or its own background-animation setting is off; the mod cannot change either. ' +
+          'RUNNING while the seconds never change: the app is not redrawing the scene. A red row 3 or 4 turns the pink glass opaque. ' +
+          'Note what each row says, then run /pink-white on to go back.',
+      }
+    }
+
     // The other choice is read back from the store, which every session shares, so a change made
     // in another window is kept. While the theme is off, a choice is saved and applied on 'on'.
     const OFF_NOTE = ' The theme is off now; /pink-white on brings it back with this choice.'
@@ -241,7 +348,7 @@ export const register: Register = on => {
     }
 
     return {
-      text: 'Use /pink-white on, off, status, corner left|right, glass on|off|veil, test or test glass.',
+      text: 'Use /pink-white on, off, status, corner left|right, glass on|off|veil, test, test glass or test motion.',
     }
   })
 
@@ -251,7 +358,7 @@ export const register: Register = on => {
   )
 
   on('ui.render', { component: 'Backdrop' }, ($, e, next) => {
-    const scene = [...ALL_SCENES, TEST].find(one => one.name === e.props.scene)
+    const scene = [...ALL_SCENES, TEST, MOTION_TEST].find(one => one.name === e.props.scene)
     if ((e.surface !== 'desktop' && e.surface !== 'mobile') || scene === undefined) {
       return next(e)
     }
